@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d1117">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <title>GitMaster</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Matrix Rain Background */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(246,106,10,0.2), rgba(255,123,0,0.1));
+            border: 1px solid #f6690a;
+            border-radius: 20px;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            font-size: 3em;
+            font-weight: 800;
+            background: linear-gradient(90deg, #f6690a, #ff9500, #f6690a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(246,105,10,0.5)); }
+            50% { filter: drop-shadow(0 0 20px rgba(246,105,10,0.8)); }
+        }
+
+        .subtitle {
+            color: #8b949e;
+            margin-top: 10px;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #f6690a;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Terminal */
+        .terminal {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            background: #21262d;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            color: #8b949e;
+            font-size: 0.9em;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+
+        .output-line {
+            margin-bottom: 5px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .output-success { color: #3fb950; }
+        .output-error { color: #f85149; }
+        .output-info { color: #58a6ff; }
+        .output-warning { color: #d29922; }
+        .output-system { color: #8b949e; }
+        .output-commit { color: #a371f7; }
+
+        .prompt {
+            color: #3fb950;
+        }
+
+        .prompt-path {
+            color: #58a6ff;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #commandInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #c9d1d9;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            caret-color: #f6690a;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #f6690a;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Right Panel */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Mission Card */
+        .mission-card {
+            background: linear-gradient(135deg, rgba(56,139,253,0.1), rgba(136,46,224,0.1));
+            border: 1px solid #388bfd;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .mission-level {
+            background: #388bfd;
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .mission-title {
+            color: #58a6ff;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .mission-desc {
+            color: #8b949e;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .mission-goal {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .mission-goal-title {
+            color: #f6690a;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+        }
+
+        .mission-goal-text {
+            color: #3fb950;
+            font-family: 'Courier New', monospace;
+        }
+
+        .hint-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(246,105,10,0.2);
+            border: 1px solid #f6690a;
+            border-radius: 10px;
+            color: #f6690a;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .hint-btn:hover {
+            background: rgba(246,105,10,0.3);
+        }
+
+        .hint-text {
+            display: none;
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(246,105,10,0.1);
+            border-radius: 10px;
+            color: #d29922;
+            font-size: 0.9em;
+        }
+
+        .hint-text.visible { display: block; }
+
+        /* Git Visualization */
+        .git-viz {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .git-viz-title {
+            color: #8b949e;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .branch-container {
+            position: relative;
+            min-height: 150px;
+        }
+
+        .commit-node {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #238636;
+            color: #fff;
+            font-size: 0.8em;
+            font-weight: bold;
+            position: relative;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        .commit-node.active {
+            box-shadow: 0 0 20px rgba(35,134,54,0.8);
+            transform: scale(1.1);
+        }
+
+        .commit-node::after {
+            content: '';
+            position: absolute;
+            right: -15px;
+            width: 15px;
+            height: 3px;
+            background: #30363d;
+        }
+
+        .commit-node:last-child::after { display: none; }
+
+        .branch-label {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #388bfd;
+            color: #fff;
+            border-radius: 5px;
+            font-size: 0.75em;
+            margin-left: 10px;
+        }
+
+        .branch-label.main { background: #238636; }
+        .branch-label.feature { background: #a371f7; }
+
+        .branch-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        /* Commands Reference */
+        .commands-ref {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .commands-ref-title {
+            color: #8b949e;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cmd-item {
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .cmd-item:hover {
+            background: rgba(246,105,10,0.2);
+        }
+
+        .cmd-name {
+            color: #f6690a;
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+
+        .cmd-desc {
+            color: #8b949e;
+            font-size: 0.75em;
+        }
+
+        /* Achievements */
+        .achievements {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .achievement {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #21262d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+
+        .achievement.unlocked {
+            opacity: 1;
+            box-shadow: 0 0 15px rgba(246,105,10,0.5);
+        }
+
+        /* Success Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.visible { display: flex; }
+
+        .modal-content {
+            background: #161b22;
+            border: 2px solid #3fb950;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            animation: modalPop 0.5s ease;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-emoji { font-size: 4em; margin-bottom: 20px; }
+        .modal-title { color: #3fb950; font-size: 1.5em; margin-bottom: 10px; }
+        .modal-text { color: #8b949e; margin-bottom: 20px; }
+        .modal-xp { color: #f6690a; font-size: 1.2em; margin-bottom: 20px; }
+
+        .modal-btn {
+            padding: 15px 40px;
+            background: linear-gradient(90deg, #3fb950, #238636);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.3s;
+        }
+
+        .modal-btn:hover { transform: scale(1.05); }
+
+        /* Level Select */
+        .level-select {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+
+        .level-select.visible { display: block; }
+
+        .level-grid {
+            max-width: 800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .level-card {
+            background: #161b22;
+            border: 2px solid #30363d;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .level-card:hover {
+            border-color: #f6690a;
+            transform: translateY(-5px);
+        }
+
+        .level-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .level-card.completed {
+            border-color: #3fb950;
+        }
+
+        .level-num {
+            font-size: 2em;
+            color: #f6690a;
+            margin-bottom: 10px;
+        }
+
+        .level-name {
+            color: #c9d1d9;
+            margin-bottom: 5px;
+        }
+
+        .level-status {
+            font-size: 0.8em;
+            color: #8b949e;
+        }
+
+        .close-levels {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #f85149;
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+
+        /* Typing effect */
+        .typing {
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typing 0.5s steps(30);
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">⚡ GitMaster</div>
+            <p class="subtitle">Освой Git через практику</p>
+            <div class="achievements" id="achievements"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value" id="levelNum">1</div>
+                <div class="stat-label">Уровень</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="xpNum">0</div>
+                <div class="stat-label">XP</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="streakNum">0</div>
+                <div class="stat-label">Стрик 🔥</div>
+            </div>
+            <div class="stat-item" style="cursor:pointer" onclick="showLevelSelect()">
+                <div class="stat-value" id="completedNum">0/15</div>
+                <div class="stat-label">Миссии ▶</div>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Terminal -->
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot dot-red"></div>
+                    <div class="terminal-dot dot-yellow"></div>
+                    <div class="terminal-dot dot-green"></div>
+                    <div class="terminal-title">git-bash — ~/project</div>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <div class="output-line output-system">Добро пожаловать в GitMaster!</div>
+                    <div class="output-line output-system">Введи команды Git для выполнения миссий.</div>
+                    <div class="output-line output-system">Напиши <span class="output-info">help</span> для списка команд.</div>
+                    <div class="output-line output-system">───────────────────────────────────</div>
+                </div>
+                <div class="input-line" style="padding: 0 20px 20px;">
+                    <span class="prompt">➜</span>&nbsp;
+                    <span class="prompt-path">~/project</span>&nbsp;
+                    <span class="prompt">(main)</span>&nbsp;
+                    <input type="text" id="commandInput" autofocus autocomplete="off" spellcheck="false">
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="right-panel">
+                <!-- Mission -->
+                <div class="mission-card">
+                    <div class="mission-header">
+                        <span class="mission-level" id="missionLevel">Уровень 1</span>
+                        <span id="missionXP" style="color:#f6690a">+50 XP</span>
+                    </div>
+                    <div class="mission-title" id="missionTitle">Первый коммит</div>
+                    <div class="mission-desc" id="missionDesc">Создай свой первый коммит в репозитории.</div>
+                    <div class="mission-goal">
+                        <div class="mission-goal-title">🎯 Цель:</div>
+                        <div class="mission-goal-text" id="missionGoal">git commit -m "..."</div>
+                    </div>
+                    <button class="hint-btn" onclick="toggleHint()">💡 Подсказка</button>
+                    <div class="hint-text" id="hintText"></div>
+                </div>
+
+                <!-- Git Visualization -->
+                <div class="git-viz">
+                    <div class="git-viz-title">📊 Визуализация</div>
+                    <div id="gitViz" class="branch-container"></div>
+                </div>
+
+                <!-- Commands -->
+                <div class="commands-ref">
+                    <div class="commands-ref-title">📖 Команды</div>
+                    <div id="commandsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <div class="modal-emoji">🎉</div>
+            <div class="modal-title">Миссия выполнена!</div>
+            <div class="modal-text" id="modalText">Отлично! Ты освоил новую команду.</div>
+            <div class="modal-xp" id="modalXP">+50 XP</div>
+            <button class="modal-btn" onclick="nextMission()">Следующая миссия →</button>
+        </div>
+    </div>
+
+    <!-- Level Select -->
+    <div class="level-select" id="levelSelect">
+        <button class="close-levels" onclick="closeLevelSelect()">✕</button>
+        <div class="level-grid" id="levelGrid"></div>
+    </div>
+
+    <script>
+        // Game Data
+        const missions = [
+            {
+                id: 1,
+                title: "Инициализация",
+                desc: "Каждый Git проект начинается с команды init. Она создаёт скрытую папку .git где хранится вся история.",
+                goal: "git init",
+                hint: "Просто напиши: git init",
+                xp: 30,
+                command: "init",
+                successMsg: "Репозиторий создан! Теперь Git следит за изменениями."
+            },
+            {
+                id: 2,
+                title: "Проверка статуса",
+                desc: "Команда status показывает текущее состояние: какие файлы изменены, что готово к коммиту.",
+                goal: "git status",
+                hint: "Напиши: git status",
+                xp: 30,
+                command: "status",
+                successMsg: "Status показывает состояние репозитория!"
+            },
+            {
+                id: 3,
+                title: "Добавление файлов",
+                desc: "Прежде чем сделать коммит, нужно добавить файлы в staging area командой add.",
+                goal: "git add .",
+                hint: "Точка означает 'все файлы': git add .",
+                xp: 40,
+                command: "add",
+                successMsg: "Файлы добавлены в staging area!"
+            },
+            {
+                id: 4,
+                title: "Первый коммит",
+                desc: "Коммит — это снимок твоего проекта. Флаг -m позволяет добавить сообщение.",
+                goal: "git commit -m \"...\"",
+                hint: "Напиши: git commit -m \"initial commit\"",
+                xp: 50,
+                command: "commit",
+                successMsg: "Первый коммит создан! Это твоя точка сохранения."
+            },
+            {
+                id: 5,
+                title: "История коммитов",
+                desc: "Команда log показывает историю всех коммитов в репозитории.",
+                goal: "git log",
+                hint: "Просто напиши: git log",
+                xp: 40,
+                command: "log",
+                successMsg: "Теперь ты видишь всю историю проекта!"
+            },
+            {
+                id: 6,
+                title: "Создание ветки",
+                desc: "Ветки позволяют работать над фичами изолированно. Создай новую ветку!",
+                goal: "git branch feature",
+                hint: "Напиши: git branch feature",
+                xp: 50,
+                command: "branch",
+                successMsg: "Новая ветка создана! Это параллельная линия разработки."
+            },
+            {
+                id: 7,
+                title: "Переключение веток",
+                desc: "Команда checkout позволяет переключаться между ветками.",
+                goal: "git checkout feature",
+                hint: "Напиши: git checkout feature",
+                xp: 50,
+                command: "checkout",
+                successMsg: "Ты переключился на ветку feature!"
+            },
+            {
+                id: 8,
+                title: "Современное переключение",
+                desc: "Git switch — новый способ переключения веток (Git 2.23+). Проще и понятнее!",
+                goal: "git switch main",
+                hint: "Напиши: git switch main",
+                xp: 40,
+                command: "switch",
+                successMsg: "Switch — современная альтернатива checkout для веток!"
+            },
+            {
+                id: 9,
+                title: "Слияние веток",
+                desc: "Merge объединяет изменения из другой ветки в текущую.",
+                goal: "git merge feature",
+                hint: "Находясь на main, напиши: git merge feature",
+                xp: 60,
+                command: "merge",
+                successMsg: "Ветки объединены! Изменения из feature теперь в main."
+            },
+            {
+                id: 10,
+                title: "Удаление ветки",
+                desc: "После слияния ветку можно удалить флагом -d.",
+                goal: "git branch -d feature",
+                hint: "Напиши: git branch -d feature",
+                xp: 40,
+                command: "branch -d",
+                successMsg: "Ветка удалена! Держи репозиторий чистым."
+            },
+            {
+                id: 11,
+                title: "Клонирование",
+                desc: "Clone создаёт копию удалённого репозитория на твоём компьютере.",
+                goal: "git clone <url>",
+                hint: "Напиши: git clone https://github.com/user/repo",
+                xp: 50,
+                command: "clone",
+                successMsg: "Репозиторий склонирован! Теперь у тебя есть локальная копия."
+            },
+            {
+                id: 12,
+                title: "Добавление remote",
+                desc: "Remote — это ссылка на удалённый репозиторий (GitHub, GitLab и т.д.)",
+                goal: "git remote add origin <url>",
+                hint: "Напиши: git remote add origin https://github.com/user/repo",
+                xp: 50,
+                command: "remote",
+                successMsg: "Remote добавлен! Теперь можно push и pull."
+            },
+            {
+                id: 13,
+                title: "Отправка изменений",
+                desc: "Push отправляет твои коммиты на удалённый сервер.",
+                goal: "git push origin main",
+                hint: "Напиши: git push origin main",
+                xp: 60,
+                command: "push",
+                successMsg: "Изменения отправлены на сервер! Другие могут их видеть."
+            },
+            {
+                id: 14,
+                title: "Получение изменений",
+                desc: "Pull скачивает изменения с сервера и сливает их с твоей веткой.",
+                goal: "git pull origin main",
+                hint: "Напиши: git pull origin main",
+                xp: 60,
+                command: "pull",
+                successMsg: "Изменения получены! Твоя локальная копия обновлена."
+            },
+            {
+                id: 15,
+                title: "Финальный босс: Rebase",
+                desc: "Rebase переносит коммиты на верхушку другой ветки. Создаёт чистую линейную историю.",
+                goal: "git rebase main",
+                hint: "Находясь на feature: git rebase main",
+                xp: 100,
+                command: "rebase",
+                successMsg: "🏆 МАСТЕР! Ты освоил даже rebase — продвинутую технику Git!"
+            }
+        ];
+
+        const commands = [
+            { name: "git init", desc: "Создать репозиторий" },
+            { name: "git status", desc: "Показать статус" },
+            { name: "git add .", desc: "Добавить все файлы" },
+            { name: "git commit -m", desc: "Сделать коммит" },
+            { name: "git log", desc: "История коммитов" },
+            { name: "git branch", desc: "Список/создать ветку" },
+            { name: "git checkout", desc: "Переключиться" },
+            { name: "git switch", desc: "Переключить ветку" },
+            { name: "git merge", desc: "Слить ветки" },
+            { name: "git clone", desc: "Клонировать репо" },
+            { name: "git push", desc: "Отправить на сервер" },
+            { name: "git pull", desc: "Получить с сервера" },
+            { name: "git rebase", desc: "Перебазировать" }
+        ];
+
+        const achievements = [
+            { id: "first", emoji: "🎯", name: "Первый коммит" },
+            { id: "branch", emoji: "🌿", name: "Ветвление" },
+            { id: "merge", emoji: "🔀", name: "Слияние" },
+            { id: "remote", emoji: "☁️", name: "Облако" },
+            { id: "master", emoji: "👑", name: "Мастер Git" }
+        ];
+
+        // Game State
+        let gameState = {
+            currentMission: 0,
+            completedMissions: [],
+            xp: 0,
+            streak: 0,
+            lastPlay: null,
+            achievements: [],
+            commits: ['C0'],
+            branches: { main: 0, feature: null },
+            currentBranch: 'main'
+        };
+
+        // Load game
+        function loadGame() {
+            const saved = localStorage.getItem('gitmaster-data');
+            if (saved) {
+                gameState = { ...gameState, ...JSON.parse(saved) };
+            }
+            updateUI();
+            renderCommands();
+            renderAchievements();
+            updateStreak();
+            loadMission(gameState.currentMission);
+        }
+
+        // Save game
+        function saveGame() {
+            localStorage.setItem('gitmaster-data', JSON.stringify(gameState));
+        }
+
+        // Update streak
+        function updateStreak() {
+            const today = new Date().toDateString();
+            if (gameState.lastPlay) {
+                const last = new Date(gameState.lastPlay);
+                const diff = Math.floor((new Date() - last) / (1000 * 60 * 60 * 24));
+                if (diff === 1) gameState.streak++;
+                else if (diff > 1) gameState.streak = 1;
+            } else {
+                gameState.streak = 1;
+            }
+            gameState.lastPlay = today;
+            saveGame();
+        }
+
+        // Update UI
+        function updateUI() {
+            document.getElementById('levelNum').textContent = Math.floor(gameState.xp / 100) + 1;
+            document.getElementById('xpNum').textContent = gameState.xp;
+            document.getElementById('streakNum').textContent = gameState.streak;
+            document.getElementById('completedNum').textContent = 
+                `${gameState.completedMissions.length}/${missions.length}`;
+        }
+
+        // Load mission
+        function loadMission(index) {
+            if (index >= missions.length) {
+                showCompletion();
+                return;
+            }
+            const mission = missions[index];
+            document.getElementById('missionLevel').textContent = `Уровень ${index + 1}`;
+            document.getElementById('missionTitle').textContent = mission.title;
+            document.getElementById('missionDesc').textContent = mission.desc;
+            document.getElementById('missionGoal').textContent = mission.goal;
+            document.getElementById('missionXP').textContent = `+${mission.xp} XP`;
+            document.getElementById('hintText').textContent = mission.hint;
+            document.getElementById('hintText').classList.remove('visible');
+            updateVisualization();
+        }
+
+        // Toggle hint
+        function toggleHint() {
+            document.getElementById('hintText').classList.toggle('visible');
+        }
+
+        // Process command
+        function processCommand(cmd) {
+            const terminal = document.getElementById('terminalBody');
+            const input = cmd.trim().toLowerCase();
+            
+            // Add command to terminal
+            addOutput(`<span class="prompt">➜</span> <span class="prompt-path">~/project</span> <span class="prompt">(${gameState.currentBranch})</span> ${escapeHtml(cmd)}`, '');
+
+            // Special commands
+            if (input === 'help') {
+                showHelp();
+                return;
+            }
+            
+            if (input === 'clear') {
+                terminal.innerHTML = '';
+                return;
+            }
+
+            // Check mission
+            const mission = missions[gameState.currentMission];
+            const isCorrect = checkCommand(input, mission);
+
+            if (isCorrect) {
+                // Success output
+                simulateGitOutput(mission);
+                
+                // Update game state
+                if (!gameState.completedMissions.includes(mission.id)) {
+                    gameState.completedMissions.push(mission.id);
+                    gameState.xp += mission.xp;
+                }
+                
+                // Check achievements
+                checkAchievements(mission);
+                
+                // Update visualization
+                updateVisualizationForCommand(mission.command);
+                
+                saveGame();
+                updateUI();
+                
+                // Show success modal
+                setTimeout(() => {
+                    document.getElementById('modalText').textContent = mission.successMsg;
+                    document.getElementById('modalXP').textContent = `+${mission.xp} XP`;
+                    document.getElementById('successModal').classList.add('visible');
+                }, 500);
+            } else {
+                addOutput('Команда не найдена или неверная. Попробуй ещё раз!', 'output-error');
+                addOutput(`Подсказка: ${mission.hint}`, 'output-warning');
+            }
+        }
+
+        // Check command
+        function checkCommand(input, mission) {
+            const cmd = mission.command;
+            
+            if (cmd === 'init' && input.includes('git init')) return true;
+            if (cmd === 'status' && input.includes('git status')) return true;
+            if (cmd === 'add' && input.includes('git add')) return true;
+            if (cmd === 'commit' && input.includes('git commit') && input.includes('-m')) return true;
+            if (cmd === 'log' && input.includes('git log')) return true;
+            if (cmd === 'branch' && input.includes('git branch') && !input.includes('-d')) return true;
+            if (cmd === 'checkout' && input.includes('git checkout')) return true;
+            if (cmd === 'switch' && input.includes('git switch')) return true;
+            if (cmd === 'merge' && input.includes('git merge')) return true;
+            if (cmd === 'branch -d' && input.includes('git branch -d')) return true;
+            if (cmd === 'clone' && input.includes('git clone')) return true;
+            if (cmd === 'remote' && input.includes('git remote')) return true;
+            if (cmd === 'push' && input.includes('git push')) return true;
+            if (cmd === 'pull' && input.includes('git pull')) return true;
+            if (cmd === 'rebase' && input.includes('git rebase')) return true;
+            
+            return false;
+        }
+
+        // Simulate git output
+        function simulateGitOutput(mission) {
+            const outputs = {
+                'init': ['Initialized empty Git repository in ~/project/.git/', 'output-success'],
+                'status': ['On branch main\nNothing to commit, working tree clean', 'output-info'],
+                'add': ['Files staged for commit', 'output-success'],
+                'commit': ['[main abc1234] Your commit message\n 1 file changed, 10 insertions(+)', 'output-commit'],
+                'log': ['commit abc1234 (HEAD -> main)\nAuthor: You\nDate: Today\n\n    Initial commit', 'output-commit'],
+                'branch': ['Branch "feature" created', 'output-success'],
+                'checkout': ['Switched to branch "feature"', 'output-success'],
+                'switch': ['Switched to branch "main"', 'output-success'],
+                'merge': ['Merge made by "recursive" strategy.\n 1 file changed', 'output-success'],
+                'branch -d': ['Deleted branch feature', 'output-success'],
+                'clone': ['Cloning into "repo"...\nReceiving objects: 100%\ndone.', 'output-success'],
+                'remote': ['Remote "origin" added', 'output-success'],
+                'push': ['Enumerating objects: 3, done.\nWriting objects: 100%\nBranch main set up to track origin/main', 'output-success'],
+                'pull': ['Already up to date.\nOr: Updating abc1234..def5678', 'output-success'],
+                'rebase': ['Successfully rebased and updated refs/heads/feature', 'output-success']
+            };
+            
+            const [text, className] = outputs[mission.command] || ['Command executed', 'output-success'];
+            text.split('\n').forEach(line => addOutput(line, className));
+        }
+
+        // Add output
+        function addOutput(text, className) {
+            const terminal = document.getElementById('terminalBody');
+            const line = document.createElement('div');
+            line.className = `output-line ${className}`;
+            line.innerHTML = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Show help
+        function showHelp() {
+            addOutput('═══════════════════════════════════════', 'output-system');
+            addOutput('📖 СПРАВКА ПО КОМАНДАМ GIT', 'output-info');
+            addOutput('═══════════════════════════════════════', 'output-system');
+            commands.forEach(cmd => {
+                addOutput(`${cmd.name} — ${cmd.desc}`, 'output-system');
+            });
+            addOutput('───────────────────────────────────────', 'output-system');
+            addOutput('clear — очистить терминал', 'output-system');
+            addOutput('help — показать эту справку', 'output-system');
+        }
+
+        // Next mission
+        function nextMission() {
+            document.getElementById('successModal').classList.remove('visible');
+            gameState.currentMission++;
+            saveGame();
+            loadMission(gameState.currentMission);
+        }
+
+        // Update visualization
+        function updateVisualization() {
+            const viz = document.getElementById('gitViz');
+            let html = '';
+            
+            // Main branch
+            html += '<div class="branch-row">';
+            gameState.commits.forEach((c, i) => {
+                const isActive = i === gameState.commits.length - 1 && gameState.currentBranch === 'main';
+                html += `<div class="commit-node ${isActive ? 'active' : ''}">${c}</div>`;
+            });
+            html += '<span class="branch-label main">main</span>';
+            html += '</div>';
+            
+            // Feature branch if exists
+            if (gameState.branches.feature !== null) {
+                html += '<div class="branch-row" style="margin-left: ' + (gameState.branches.feature * 50) + 'px">';
+                html += `<div class="commit-node ${gameState.currentBranch === 'feature' ? 'active' : ''}">F1</div>`;
+                html += '<span class="branch-label feature">feature</span>';
+                html += '</div>';
+            }
+            
+            viz.innerHTML = html;
+        }
+
+        // Update visualization for command
+        function updateVisualizationForCommand(cmd) {
+            if (cmd === 'commit') {
+                gameState.commits.push('C' + gameState.commits.length);
+            }
+            if (cmd === 'branch') {
+                gameState.branches.feature = gameState.commits.length - 1;
+            }
+            if (cmd === 'checkout' || (cmd === 'switch' && gameState.currentBranch === 'feature')) {
+                gameState.currentBranch = gameState.currentBranch === 'main' ? 'feature' : 'main';
+            }
+            if (cmd === 'merge') {
+                gameState.branches.feature = null;
+                gameState.commits.push('M' + gameState.commits.length);
+            }
+            if (cmd === 'branch -d') {
+                gameState.branches.feature = null;
+            }
+            updateVisualization();
+        }
+
+        // Check achievements
+        function checkAchievements(mission) {
+            if (mission.id === 4 && !gameState.achievements.includes('first')) {
+                gameState.achievements.push('first');
+            }
+            if (mission.id === 6 && !gameState.achievements.includes('branch')) {
+                gameState.achievements.push('branch');
+            }
+            if (mission.id === 9 && !gameState.achievements.includes('merge')) {
+                gameState.achievements.push('merge');
+            }
+            if (mission.id === 13 && !gameState.achievements.includes('remote')) {
+                gameState.achievements.push('remote');
+            }
+            if (mission.id === 15 && !gameState.achievements.includes('master')) {
+                gameState.achievements.push('master');
+            }
+            renderAchievements();
+        }
+
+        // Render achievements
+        function renderAchievements() {
+            const container = document.getElementById('achievements');
+            container.innerHTML = achievements.map(a => {
+                const unlocked = gameState.achievements.includes(a.id);
+                return `<div class="achievement ${unlocked ? 'unlocked' : ''}" title="${a.name}">${a.emoji}</div>`;
+            }).join('');
+        }
+
+        // Render commands
+        function renderCommands() {
+            const container = document.getElementById('commandsList');
+            container.innerHTML = commands.map(cmd => `
+                <div class="cmd-item" onclick="insertCommand('${cmd.name}')">
+                    <div class="cmd-name">${cmd.name}</div>
+                    <div class="cmd-desc">${cmd.desc}</div>
+                </div>
+            `).join('');
+        }
+
+        // Insert command
+        function insertCommand(cmd) {
+            document.getElementById('commandInput').value = cmd + ' ';
+            document.getElementById('commandInput').focus();
+        }
+
+        // Show level select
+        function showLevelSelect() {
+            const grid = document.getElementById('levelGrid');
+            grid.innerHTML = missions.map((m, i) => {
+                const completed = gameState.completedMissions.includes(m.id);
+                const locked = i > gameState.currentMission && !completed;
+                return `
+                    <div class="level-card ${completed ? 'completed' : ''} ${locked ? 'locked' : ''}" 
+                         onclick="${locked ? '' : `selectLevel(${i})`}">
+                        <div class="level-num">${i + 1}</div>
+                        <div class="level-name">${m.title}</div>
+                        <div class="level-status">
+                            ${completed ? '✅ Пройдено' : locked ? '🔒 Заблокировано' : '▶ Играть'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('levelSelect').classList.add('visible');
+        }
+
+        // Select level
+        function selectLevel(index) {
+            gameState.currentMission = index;
+            saveGame();
+            loadMission(index);
+            closeLevelSelect();
+        }
+
+        // Close level select
+        function closeLevelSelect() {
+            document.getElementById('levelSelect').classList.remove('visible');
+        }
+
+        // Show completion
+        function showCompletion() {
+            document.getElementById('missionTitle').textContent = '🏆 ВСЕ МИССИИ ПРОЙДЕНЫ!';
+            document.getElementById('missionDesc').textContent = 'Поздравляем! Ты освоил Git и готов к реальным проектам!';
+            document.getElementById('missionGoal').textContent = 'Ты — GitMaster!';
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Matrix background
+        function initMatrix() {
+            const canvas = document.getElementById('matrix-bg');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const chars = 'git commit push pull branch merge rebase 01';
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+            
+            function draw() {
+                ctx.fillStyle = 'rgba(13, 17, 23, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#f6690a';
+                ctx.font = fontSize + 'px monospace';
+                
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            
+            setInterval(draw, 50);
+        }
+
+        // Input handling
+        document.getElementById('commandInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && this.value.trim()) {
+                processCommand(this.value);
+                this.value = '';
+            }
+        });
+
+        // Init
+        loadGame();
+        initMatrix();
+
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+    </script>
+</body>
+</html>
